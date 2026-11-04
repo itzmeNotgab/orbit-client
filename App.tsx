@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from "react";
 import {
   SafeAreaView,
@@ -11,288 +12,348 @@ import {
   Pressable,
 } from "react-native";
 
-type Category = "HUD" | "Visual" | "Utility" | "Performance" | "Client";
+const categories = ["HUD", "Visual", "Utility", "Performance", "Client"];
 
-type ModuleItem = {
-  id: string;
-  name: string;
-  description: string;
-  category: Category;
-  defaultEnabled?: boolean;
-};
-
-const categories: Category[] = [
-  "HUD",
-  "Visual",
-  "Utility",
-  "Performance",
-  "Client",
+const modules = [
+  { id: "fps", name: "FPS Display", category: "HUD", description: "FPS widget preview." },
+  { id: "coords", name: "Coordinates", category: "HUD", description: "Coordinates widget preview." },
+  { id: "compass", name: "Compass", category: "HUD", description: "Compass widget preview." },
+  { id: "armor", name: "Armor Status", category: "HUD", description: "Equipment status preview." },
+  { id: "keystrokes", name: "Keystrokes", category: "HUD", description: "Input display preview." },
+  { id: "minimap", name: "Minimap", category: "HUD", description: "Map mockup and manual waypoint planning." },
+  { id: "crosshair", name: "Crosshair", category: "Visual", description: "Crosshair style preview." },
+  { id: "particles", name: "Particle Preferences", category: "Visual", description: "Particle settings guide." },
+  { id: "quicknotes", name: "Quick Notes", category: "Utility", description: "Keep notes beside your game." },
+  { id: "waypoints", name: "Waypoints", category: "Utility", description: "Save manual waypoint notes." },
+  { id: "packguide", name: "Pack Guide", category: "Utility", description: "Resource pack tips." },
+  { id: "loweffects", name: "Low Effects Preset", category: "Performance", description: "Lightweight settings checklist." },
+  { id: "battery", name: "Battery Saver Profile", category: "Performance", description: "Companion battery profile." },
+  { id: "notifications", name: "Notifications", category: "Client", description: "Notification preferences." },
+  { id: "compact", name: "Compact Interface", category: "Client", description: "Compact app interface." },
 ];
 
-const modules: ModuleItem[] = [
-  { id: "fps", name: "FPS Display", description: "Demo switch for a future frame-rate overlay.", category: "HUD", defaultEnabled: true },
-  { id: "coords", name: "Coordinates", description: "Demo switch for a future coordinates display.", category: "HUD" },
-  { id: "keystrokes", name: "Keystrokes", description: "Demo switch for a future input display.", category: "HUD" },
-  { id: "armor", name: "Armor Status", description: "Placeholder for an equipment status widget.", category: "HUD" },
-  { id: "clearview", name: "Clear View", description: "A placeholder for supported visual preferences.", category: "Visual" },
-  { id: "particles", name: "Particle Control", description: "Demo setting for a future supported particle option.", category: "Visual" },
-  { id: "crosshair", name: "Crosshair", description: "Placeholder for a customizable crosshair overlay.", category: "Visual" },
-  { id: "quicknotes", name: "Quick Notes", description: "A simple companion-tool concept for gameplay notes.", category: "Utility" },
-  { id: "packguide", name: "Pack Guide", description: "Placeholder for resource-pack information and tips.", category: "Utility" },
-  { id: "loweffects", name: "Low Effects Preset", description: "A profile label for choosing lighter visual settings.", category: "Performance" },
-  { id: "battery", name: "Battery Saver Profile", description: "A reminder/profile control, not a system power tweak.", category: "Performance" },
-  { id: "compact", name: "Compact Interface", description: "Use a more compact layout inside this companion app.", category: "Client" },
-  { id: "notifications", name: "In-App Notifications", description: "Demo preference for future app notifications.", category: "Client" },
-];
-
-const initialEnabled = modules.reduce<Record<string, boolean>>((result, item) => {
-  result[item.id] = Boolean(item.defaultEnabled);
-  return result;
-}, {});
+const initialEnabled = Object.fromEntries(
+  modules.map((item) => [item.id, item.id === "fps"])
+);
 
 export default function App() {
-  const [selectedCategory, setSelectedCategory] = useState<Category>("HUD");
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(initialEnabled);
-  const [favorites, setFavorites] = useState<string[]>(["fps"]);
+  const [category, setCategory] = useState("HUD");
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const [favorites, setFavorites] = useState(["fps"]);
+  const [expanded, setExpanded] = useState("fps");
   const [search, setSearch] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [screen, setScreen] = useState("modules");
+
+  const [settings, setSettings] = useState({
+    fps: { size: 16, opacity: 100 },
+    coords: { size: 14, opacity: 100 },
+    compass: { size: 18, opacity: 100 },
+    armor: { size: 20, opacity: 100 },
+    keystrokes: { size: 18, opacity: 100 },
+    minimap: { size: 120, opacity: 90 },
+  });
+
+  const [positions, setPositions] = useState({
+    fps: { x: 10, y: 10 },
+    coords: { x: 10, y: 60 },
+    compass: { x: 150, y: 10 },
+    minimap: { x: 150, y: 60 },
+  });
+
+  const [selected, setSelected] = useState("fps");
+
+  const visibleModules = useMemo(() => {
+    return modules.filter((item) => {
+      const matchesCategory = item.category === category;
+      const matchesSearch = (item.name + item.description)
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const matchesFavorite = !favoritesOnly || favorites.includes(item.id);
+
+      return matchesCategory && matchesSearch && matchesFavorite;
+    });
+  }, [category, search, favoritesOnly, favorites]);
 
   const activeCount = Object.values(enabled).filter(Boolean).length;
 
-  const visibleModules = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  function updateSetting(id, key, value) {
+    setSettings((old) => ({
+      ...old,
+      [id]: { ...(old[id] || {}), [key]: value },
+    }));
+  }
 
-    return modules.filter((item) => {
-      const matchesCategory = item.category === selectedCategory;
-      const matchesFavorite = !favoritesOnly || favorites.includes(item.id);
-      const matchesSearch =
-        !query ||
-        item.name.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query);
-
-      return matchesCategory && matchesFavorite && matchesSearch;
-    });
-  }, [selectedCategory, favoritesOnly, favorites, search]);
-
-  const toggleFavorite = (id: string) => {
-    setFavorites((previous) =>
-      previous.includes(id)
-        ? previous.filter((favorite) => favorite !== id)
-        : [...previous, id]
+  function toggleFavorite(id) {
+    setFavorites((old) =>
+      old.includes(id) ? old.filter((x) => x !== id) : [...old, id]
     );
-  };
+  }
 
-  const selectCategory = (category: Category) => {
-    setSelectedCategory(category);
-    setFavoritesOnly(false);
-  };
+  function moveWidget(id, dx, dy) {
+    setPositions((old) => ({
+      ...old,
+      [id]: {
+        x: Math.max(0, Math.min(250, old[id].x + dx)),
+        y: Math.max(0, Math.min(190, old[id].y + dy)),
+      },
+    }));
+  }
+
+  function renderSettings(item) {
+    const values = settings[item.id] || { size: 18, opacity: 100 };
+
+    return (
+      <View style={styles.settings}>
+        <Text style={styles.settingsTitle}>MODULE SETTINGS</Text>
+
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>Size: {values.size ?? 18}</Text>
+          <View style={styles.controls}>
+            <Pressable
+              style={styles.smallButton}
+              onPress={() =>
+                updateSetting(item.id, "size", Math.max(8, (values.size ?? 18) - 2))
+              }
+            >
+              <Text style={styles.buttonText}>−</Text>
+            </Pressable>
+            <Pressable
+              style={styles.smallButton}
+              onPress={() =>
+                updateSetting(item.id, "size", Math.min(150, (values.size ?? 18) + 2))
+              }
+            >
+              <Text style={styles.buttonText}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>Opacity: {values.opacity ?? 100}%</Text>
+          <View style={styles.controls}>
+            <Pressable
+              style={styles.smallButton}
+              onPress={() =>
+                updateSetting(item.id, "opacity", Math.max(0, (values.opacity ?? 100) - 10))
+              }
+            >
+              <Text style={styles.buttonText}>−</Text>
+            </Pressable>
+            <Pressable
+              style={styles.smallButton}
+              onPress={() =>
+                updateSetting(item.id, "opacity", Math.min(100, (values.opacity ?? 100) + 10))
+              }
+            >
+              <Text style={styles.buttonText}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#090713" />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.logo}>ORBIT</Text>
+            <Text style={styles.logo}>◉ ORBIT</Text>
             <Text style={styles.tagline}>BEYOND VANILLA.</Text>
           </View>
-
-          <View style={styles.statusPill}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>READY</Text>
-          </View>
+          <Text style={styles.ready}>● READY</Text>
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>ORBIT CLIENT • V1.1 PREVIEW</Text>
-
+          <Text style={styles.eyebrow}>ORBIT CLIENT • V1.2</Text>
           <Text style={styles.heading}>Your game.</Text>
           <Text style={styles.heading}>
             Your <Text style={styles.purple}>control.</Text>
           </Text>
-
           <Text style={styles.description}>
-            Your Minecraft Bedrock companion for customization, helpful
-            utilities, and performance-minded profiles.
+            A customizable Minecraft Bedrock companion.
           </Text>
 
-          <View style={styles.heroFooter}>
-            <View>
-              <Text style={styles.statNumber}>{activeCount}</Text>
-              <Text style={styles.statCaption}>ENABLED DEMO MODULES</Text>
-            </View>
-
-            <View style={styles.heroDivider} />
-
-            <View>
-              <Text style={styles.statNumber}>{modules.length}</Text>
-              <Text style={styles.statCaption}>TOTAL MODULES</Text>
-            </View>
+          <View style={styles.stats}>
+            <Text style={styles.stat}>{activeCount} ENABLED</Text>
+            <Text style={styles.stat}>{modules.length} MODULES</Text>
           </View>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>CLICKGUI</Text>
-            <Text style={styles.sectionSubtitle}>
-              BROWSE YOUR ORBIT MODULES
-            </Text>
-          </View>
-
+        <View style={styles.navigation}>
           <Pressable
-            onPress={() => setFavoritesOnly((value) => !value)}
-            style={[
-              styles.favoriteFilter,
-              favoritesOnly && styles.favoriteFilterActive,
-            ]}
+            style={[styles.navButton, screen === "modules" && styles.selectedNav]}
+            onPress={() => setScreen("modules")}
           >
-            <Text
-              style={[
-                styles.favoriteFilterText,
-                favoritesOnly && styles.favoriteFilterTextActive,
-              ]}
-            >
-              {favoritesOnly ? "★ FAVORITES" : "☆ FAVORITES"}
-            </Text>
+            <Text style={styles.navText}>CLICKGUI</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.navButton, screen === "editor" && styles.selectedNav]}
+            onPress={() => setScreen("editor")}
+          >
+            <Text style={styles.navText}>HUD EDITOR</Text>
           </Pressable>
         </View>
 
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search modules..."
-          placeholderTextColor="#716A80"
-          style={styles.search}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-        />
+        {screen === "modules" ? (
+          <>
+            <Text style={styles.sectionTitle}>MODULES</Text>
+            <TextInput
+              style={styles.search}
+              placeholder="Search modules..."
+              placeholderTextColor="#81778F"
+              value={search}
+              onChangeText={setSearch}
+            />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryRow}
-        >
-          {categories.map((category) => {
-            const selected = category === selectedCategory;
+            <Pressable
+              style={styles.favoriteFilter}
+              onPress={() => setFavoritesOnly(!favoritesOnly)}
+            >
+              <Text style={styles.categoryText}>
+                {favoritesOnly ? "★ SHOWING FAVORITES" : "☆ SHOW FAVORITES"}
+              </Text>
+            </Pressable>
 
-            return (
-              <Pressable
-                key={category}
-                onPress={() => selectCategory(category)}
-                style={[
-                  styles.categoryChip,
-                  selected && styles.categoryChipSelected,
-                ]}
-              >
-                <Text
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {categories.map((item) => (
+                <Pressable
+                  key={item}
                   style={[
-                    styles.categoryText,
-                    selected && styles.categoryTextSelected,
+                    styles.category,
+                    category === item && styles.selectedCategory,
+                  ]}
+                  onPress={() => {
+                    setCategory(item);
+                    setFavoritesOnly(false);
+                  }}
+                >
+                  <Text style={styles.categoryText}>{item}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {visibleModules.map((item) => (
+              <View key={item.id} style={styles.card}>
+                <View style={styles.moduleHeader}>
+                  <Pressable
+                    style={styles.moduleInfo}
+                    onPress={() =>
+                      setExpanded(expanded === item.id ? null : item.id)
+                    }
+                  >
+                    <Text style={styles.moduleName}>{item.name}</Text>
+                    <Text style={styles.moduleDescription}>
+                      {item.description}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable onPress={() => toggleFavorite(item.id)}>
+                    <Text style={styles.star}>
+                      {favorites.includes(item.id) ? "★" : "☆"}
+                    </Text>
+                  </Pressable>
+
+                  <Switch
+                    value={Boolean(enabled[item.id])}
+                    onValueChange={(value) =>
+                      setEnabled((old) => ({ ...old, [item.id]: value }))
+                    }
+                    trackColor={{ false: "#393244", true: "#8B50E8" }}
+                  />
+                </View>
+
+                <Text style={styles.status}>
+                  {enabled[item.id] ? "● ENABLED" : "○ DISABLED"}
+                </Text>
+
+                {expanded === item.id && renderSettings(item)}
+              </View>
+            ))}
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionTitle}>HUD EDITOR</Text>
+            <Text style={styles.description}>
+              Select a widget, then use the arrows to move it around.
+            </Text>
+
+            <View style={styles.canvas}>
+              {["fps", "coords", "compass", "minimap"].map((id) => (
+                <Pressable
+                  key={id}
+                  onPress={() => setSelected(id)}
+                  style={[
+                    styles.widget,
+                    {
+                      left: positions[id].x,
+                      top: positions[id].y,
+                      borderColor: selected === id ? "#D2AFFF" : "#71539A",
+                    },
                   ]}
                 >
-                  {category}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.moduleHeader}>
-          <Text style={styles.moduleHeaderTitle}>
-            {selectedCategory} MODULES
-          </Text>
-          <Text style={styles.moduleCount}>
-            {visibleModules.length} SHOWN
-          </Text>
-        </View>
-
-        {visibleModules.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No modules found</Text>
-            <Text style={styles.emptyText}>
-              Try another search or turn off the favorites filter.
-            </Text>
-          </View>
-        ) : (
-          visibleModules.map((item) => (
-            <View key={item.id} style={styles.moduleCard}>
-              <View style={styles.moduleTopRow}>
-                <View style={styles.moduleText}>
-                  <Text style={styles.moduleName}>{item.name}</Text>
-                  <Text style={styles.moduleDescription}>
-                    {item.description}
-                  </Text>
-                </View>
-
-                <Pressable
-                  onPress={() => toggleFavorite(item.id)}
-                  hitSlop={10}
-                  style={styles.starButton}
-                >
-                  <Text style={styles.star}>
-                    {favorites.includes(item.id) ? "★" : "☆"}
-                  </Text>
+                  <Text style={styles.widgetText}>{id.toUpperCase()}</Text>
                 </Pressable>
-              </View>
-
-              <View style={styles.moduleBottomRow}>
-                <View style={styles.moduleStatus}>
-                  <View
-                    style={[
-                      styles.moduleStatusDot,
-                      enabled[item.id] && styles.moduleStatusDotEnabled,
-                    ]}
-                  />
-
-                  <Text
-                    style={[
-                      styles.moduleStatusText,
-                      enabled[item.id] && styles.moduleStatusTextEnabled,
-                    ]}
-                  >
-                    {enabled[item.id] ? "ENABLED" : "DISABLED"}
-                  </Text>
-                </View>
-
-                <Switch
-                  value={Boolean(enabled[item.id])}
-                  onValueChange={(value) =>
-                    setEnabled((previous) => ({
-                      ...previous,
-                      [item.id]: value,
-                    }))
-                  }
-                  trackColor={{ false: "#393244", true: "#8B50E8" }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
+              ))}
             </View>
-          ))
+
+            <Text style={styles.settingLabel}>
+              SELECTED: {selected.toUpperCase()}
+            </Text>
+
+            <View style={styles.moveControls}>
+              <Pressable
+                style={styles.moveButton}
+                onPress={() => moveWidget(selected, 0, -10)}
+              >
+                <Text style={styles.buttonText}>↑</Text>
+              </Pressable>
+              <Pressable
+                style={styles.moveButton}
+                onPress={() => moveWidget(selected, -10, 0)}
+              >
+                <Text style={styles.buttonText}>←</Text>
+              </Pressable>
+              <Pressable
+                style={styles.moveButton}
+                onPress={() => moveWidget(selected, 0, 10)}
+              >
+                <Text style={styles.buttonText}>↓</Text>
+              </Pressable>
+              <Pressable
+                style={styles.moveButton}
+                onPress={() => moveWidget(selected, 10, 0)}
+              >
+                <Text style={styles.buttonText}>→</Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={styles.reset}
+              onPress={() =>
+                setPositions({
+                  fps: { x: 10, y: 10 },
+                  coords: { x: 10, y: 60 },
+                  compass: { x: 150, y: 10 },
+                  minimap: { x: 150, y: 60 },
+                })
+              }
+            >
+              <Text style={styles.navText}>RESET LAYOUT</Text>
+            </Pressable>
+          </>
         )}
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>CONFIGURATION</Text>
-          <Text style={styles.infoText}>
-            Module switches and favorites work inside this app for this
-            session. Persistent saving and real Minecraft integration are
-            planned for later versions.
-          </Text>
-        </View>
-
         <View style={styles.footer}>
-          <Text style={styles.footerBrand}>ORBIT CLIENT</Text>
-          <Text style={styles.footerText}>
-            BEYOND VANILLA. • V1.1 PREVIEW
-          </Text>
+          <Text style={styles.footerTitle}>ORBIT CLIENT</Text>
+          <Text style={styles.footerText}>BEYOND VANILLA.</Text>
           <Text style={styles.disclaimer}>
-            These are companion-app demo controls. They do not modify
-            Minecraft, inject code, or bypass game protections.
+            Companion app preview only. These controls do not modify Minecraft,
+            inject code or bypass protections. Live game data requires supported
+            Bedrock integration.
           </Text>
         </View>
       </ScrollView>
@@ -301,330 +362,51 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#090713",
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 42,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-  logo: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: 4,
-  },
-  tagline: {
-    color: "#A56BFF",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 3,
-    marginTop: 4,
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#14251F",
-    borderColor: "#244A39",
-    borderWidth: 1,
-    borderRadius: 30,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 7,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#65E6A5",
-  },
-  statusText: {
-    color: "#8CE8B7",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  hero: {
-    backgroundColor: "#151122",
-    borderRadius: 22,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: "#302443",
-    marginBottom: 28,
-  },
-  eyebrow: {
-    color: "#A56BFF",
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1.7,
-    marginBottom: 18,
-  },
-  heading: {
-    color: "#FFFFFF",
-    fontSize: 35,
-    fontWeight: "900",
-    lineHeight: 40,
-  },
-  purple: {
-    color: "#B889FF",
-  },
-  description: {
-    color: "#A69DB6",
-    fontSize: 13,
-    lineHeight: 21,
-    marginTop: 13,
-  },
-  heroFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 23,
-    paddingTop: 17,
-    borderTopWidth: 1,
-    borderTopColor: "#302443",
-    gap: 22,
-  },
-  statNumber: {
-    color: "#FFFFFF",
-    fontSize: 23,
-    fontWeight: "900",
-  },
-  statCaption: {
-    color: "#938AA4",
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginTop: 3,
-  },
-  heroDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: "#3B304B",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  sectionSubtitle: {
-    color: "#8D849D",
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    marginTop: 4,
-  },
-  favoriteFilter: {
-    borderWidth: 1,
-    borderColor: "#443653",
-    borderRadius: 20,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  favoriteFilterActive: {
-    backgroundColor: "#2A1C3C",
-    borderColor: "#A56BFF",
-  },
-  favoriteFilterText: {
-    color: "#B6A9C9",
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  favoriteFilterTextActive: {
-    color: "#D7BFFF",
-  },
-  search: {
-    backgroundColor: "#151122",
-    borderWidth: 1,
-    borderColor: "#302443",
-    borderRadius: 13,
-    color: "#FFFFFF",
-    fontSize: 13,
-    paddingHorizontal: 15,
-    paddingVertical: 13,
-    marginBottom: 14,
-  },
-  categoryRow: {
-    gap: 8,
-    paddingBottom: 18,
-  },
-  categoryChip: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#342A43",
-    backgroundColor: "#151122",
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-  },
-  categoryChipSelected: {
-    backgroundColor: "#382253",
-    borderColor: "#A56BFF",
-  },
-  categoryText: {
-    color: "#A69DB6",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-  },
-  categoryTextSelected: {
-    color: "#E2CEFF",
-  },
-  moduleHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 11,
-  },
-  moduleHeaderTitle: {
-    color: "#D9D0E8",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  moduleCount: {
-    color: "#81778F",
-    fontSize: 9,
-    fontWeight: "800",
-  },
-  moduleCard: {
-    backgroundColor: "#151122",
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#302443",
-    padding: 15,
-    marginBottom: 10,
-  },
-  moduleTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  moduleText: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  moduleName: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  moduleDescription: {
-    color: "#91889F",
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 5,
-  },
-  starButton: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  star: {
-    color: "#C69BFF",
-    fontSize: 23,
-  },
-  moduleBottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  moduleStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  moduleStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#70677D",
-  },
-  moduleStatusDotEnabled: {
-    backgroundColor: "#A56BFF",
-  },
-  moduleStatusText: {
-    color: "#82798F",
-    fontSize: 8,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  moduleStatusTextEnabled: {
-    color: "#C69BFF",
-  },
-  emptyState: {
-    backgroundColor: "#151122",
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#302443",
-    padding: 22,
-    alignItems: "center",
-  },
-  emptyTitle: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: "#91889F",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 7,
-  },
-  infoCard: {
-    backgroundColor: "#171321",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#3A2B4D",
-    padding: 16,
-    marginTop: 12,
-  },
-  infoTitle: {
-    color: "#C69BFF",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
-  infoText: {
-    color: "#A69DB6",
-    fontSize: 11,
-    lineHeight: 18,
-    marginTop: 7,
-  },
-  footer: {
-    alignItems: "center",
-    marginTop: 30,
-  },
-  footerBrand: {
-    color: "#B889FF",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 3,
-  },
-  footerText: {
-    color: "#82798F",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginTop: 7,
-  },
-  disclaimer: {
-    color: "#716A7D",
-    fontSize: 9,
-    lineHeight: 15,
-    textAlign: "center",
-    marginTop: 12,
-    maxWidth: 280,
-  },
+  container: { flex: 1, backgroundColor: "#090713" },
+  content: { padding: 18, paddingBottom: 40 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 22 },
+  logo: { color: "#FFF", fontSize: 27, fontWeight: "900", letterSpacing: 3 },
+  tagline: { color: "#A56BFF", fontSize: 9, fontWeight: "900", letterSpacing: 3 },
+  ready: { color: "#8CE8B7", fontSize: 10, fontWeight: "900" },
+  hero: { backgroundColor: "#151122", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#302443", marginBottom: 20 },
+  eyebrow: { color: "#A56BFF", fontSize: 9, fontWeight: "900", marginBottom: 12 },
+  heading: { color: "#FFF", fontSize: 34, fontWeight: "900" },
+  purple: { color: "#B889FF" },
+  description: { color: "#A69DB6", fontSize: 12, lineHeight: 19, marginTop: 10 },
+  stats: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, borderTopWidth: 1, borderTopColor: "#302443", paddingTop: 15 },
+  stat: { color: "#C69BFF", fontSize: 10, fontWeight: "900" },
+  navigation: { flexDirection: "row", backgroundColor: "#151122", borderRadius: 12, padding: 4, marginBottom: 22 },
+  navButton: { flex: 1, padding: 12, alignItems: "center", borderRadius: 9 },
+  selectedNav: { backgroundColor: "#382253" },
+  navText: { color: "#E2CEFF", fontSize: 10, fontWeight: "900" },
+  sectionTitle: { color: "#FFF", fontSize: 18, fontWeight: "900", marginBottom: 12 },
+  search: { backgroundColor: "#151122", borderWidth: 1, borderColor: "#302443", borderRadius: 12, color: "#FFF", padding: 13, marginBottom: 12 },
+  favoriteFilter: { alignSelf: "flex-start", borderWidth: 1, borderColor: "#74529A", borderRadius: 20, padding: 9, marginBottom: 12 },
+  category: { backgroundColor: "#151122", borderWidth: 1, borderColor: "#342A43", borderRadius: 10, padding: 11, marginRight: 7, marginBottom: 15 },
+  selectedCategory: { backgroundColor: "#382253", borderColor: "#A56BFF" },
+  categoryText: { color: "#DCCBEE", fontSize: 10, fontWeight: "800" },
+  card: { backgroundColor: "#151122", borderRadius: 14, borderWidth: 1, borderColor: "#302443", padding: 14, marginBottom: 10 },
+  moduleHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  moduleInfo: { flex: 1 },
+  moduleName: { color: "#FFF", fontSize: 13, fontWeight: "800" },
+  moduleDescription: { color: "#91889F", fontSize: 10, marginTop: 4 },
+  star: { color: "#C69BFF", fontSize: 21 },
+  status: { color: "#C69BFF", fontSize: 8, fontWeight: "900", marginTop: 8 },
+  settings: { borderTopWidth: 1, borderTopColor: "#352844", marginTop: 12, paddingTop: 12 },
+  settingsTitle: { color: "#B889FF", fontSize: 9, fontWeight: "900", marginBottom: 12 },
+  settingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  settingLabel: { color: "#D7CDE5", fontSize: 10, fontWeight: "700" },
+  controls: { flexDirection: "row", gap: 8 },
+  smallButton: { backgroundColor: "#493064", borderRadius: 7, paddingHorizontal: 13, paddingVertical: 5 },
+  buttonText: { color: "#FFF", fontSize: 16, fontWeight: "900" },
+  canvas: { height: 250, backgroundColor: "#100D19", borderWidth: 1, borderColor: "#49365E", borderRadius: 13, marginVertical: 15, position: "relative", overflow: "hidden" },
+  widget: { position: "absolute", backgroundColor: "#261B36", borderWidth: 1, borderRadius: 7, padding: 9 },
+  widgetText: { color: "#F1E8FF", fontSize: 10, fontWeight: "900" },
+  moveControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginVertical: 15 },
+  moveButton: { backgroundColor: "#493064", borderRadius: 9, padding: 13, minWidth: 45, alignItems: "center" },
+  reset: { backgroundColor: "#382253", borderRadius: 9, padding: 13, alignItems: "center" },
+  footer: { alignItems: "center", marginTop: 30 },
+  footerTitle: { color: "#B889FF", fontSize: 13, fontWeight: "900", letterSpacing: 3 },
+  footerText: { color: "#82798F", fontSize: 9, marginTop: 5 },
+  disclaimer: { color: "#716A7D", fontSize: 8, lineHeight: 14, textAlign: "center", marginTop: 10 },
 });
