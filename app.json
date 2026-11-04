@@ -1,0 +1,21 @@
+
+{
+  "expo": {
+    "name": "ORBIT CLIENT",
+    "slug": "orbit-client",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.orbitclient.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#090713"
+      }
+    },
+    "splash": {
+      "backgroundColor": "#090713"
+    }
+  }
+}
