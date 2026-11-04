@@ -12,9 +12,34 @@ import {
   Pressable,
 } from "react-native";
 
-const categories = ["HUD", "Visual", "Utility", "Performance", "Client"];
+type ModuleCategory = "HUD" | "Visual" | "Utility" | "Performance" | "Client";
 
-const modules = [
+type ModuleItem = {
+  id: string;
+  name: string;
+  category: ModuleCategory;
+  description: string;
+};
+
+type WidgetSettings = {
+  size: number;
+  opacity: number;
+};
+
+type WidgetPosition = {
+  x: number;
+  y: number;
+};
+
+const categories: ModuleCategory[] = [
+  "HUD",
+  "Visual",
+  "Utility",
+  "Performance",
+  "Client",
+];
+
+const modules: ModuleItem[] = [
   { id: "fps", name: "FPS Display", category: "HUD", description: "FPS widget preview." },
   { id: "coords", name: "Coordinates", category: "HUD", description: "Coordinates widget preview." },
   { id: "compass", name: "Compass", category: "HUD", description: "Compass widget preview." },
@@ -32,36 +57,42 @@ const modules = [
   { id: "compact", name: "Compact Interface", category: "Client", description: "Compact app interface." },
 ];
 
-const initialEnabled = Object.fromEntries(
+const initialEnabled: Record<string, boolean> = Object.fromEntries(
   modules.map((item) => [item.id, item.id === "fps"])
 );
 
+const initialPositions: Record<string, WidgetPosition> = {
+  fps: { x: 10, y: 10 },
+  coords: { x: 10, y: 60 },
+  compass: { x: 150, y: 10 },
+  minimap: { x: 150, y: 60 },
+};
+
+const initialSettings: Record<string, WidgetSettings> = {
+  fps: { size: 16, opacity: 100 },
+  coords: { size: 14, opacity: 100 },
+  compass: { size: 18, opacity: 100 },
+  armor: { size: 20, opacity: 100 },
+  keystrokes: { size: 18, opacity: 100 },
+  minimap: { size: 120, opacity: 90 },
+};
+
 export default function App() {
-  const [category, setCategory] = useState("HUD");
-  const [enabled, setEnabled] = useState(initialEnabled);
-  const [favorites, setFavorites] = useState(["fps"]);
-  const [expanded, setExpanded] = useState("fps");
+  const [category, setCategory] = useState<ModuleCategory>("HUD");
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(initialEnabled);
+  const [favorites, setFavorites] = useState<string[]>(["fps"]);
+  const [expanded, setExpanded] = useState<string | null>("fps");
   const [search, setSearch] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [screen, setScreen] = useState("modules");
+  const [screen, setScreen] = useState<"modules" | "editor">("modules");
 
-  const [settings, setSettings] = useState({
-    fps: { size: 16, opacity: 100 },
-    coords: { size: 14, opacity: 100 },
-    compass: { size: 18, opacity: 100 },
-    armor: { size: 20, opacity: 100 },
-    keystrokes: { size: 18, opacity: 100 },
-    minimap: { size: 120, opacity: 90 },
-  });
+  const [settings, setSettings] =
+    useState<Record<string, WidgetSettings>>(initialSettings);
 
-  const [positions, setPositions] = useState({
-    fps: { x: 10, y: 10 },
-    coords: { x: 10, y: 60 },
-    compass: { x: 150, y: 10 },
-    minimap: { x: 150, y: 60 },
-  });
+  const [positions, setPositions] =
+    useState<Record<string, WidgetPosition>>(initialPositions);
 
-  const [selected, setSelected] = useState("fps");
+  const [selected, setSelected] = useState<string>("fps");
 
   const visibleModules = useMemo(() => {
     return modules.filter((item) => {
@@ -77,30 +108,41 @@ export default function App() {
 
   const activeCount = Object.values(enabled).filter(Boolean).length;
 
-  function updateSetting(id, key, value) {
+  function updateSetting(
+    id: string,
+    key: keyof WidgetSettings,
+    value: number
+  ) {
     setSettings((old) => ({
       ...old,
-      [id]: { ...(old[id] || {}), [key]: value },
+      [id]: {
+        ...(old[id] || { size: 18, opacity: 100 }),
+        [key]: value,
+      },
     }));
   }
 
-  function toggleFavorite(id) {
+  function toggleFavorite(id: string) {
     setFavorites((old) =>
       old.includes(id) ? old.filter((x) => x !== id) : [...old, id]
     );
   }
 
-  function moveWidget(id, dx, dy) {
-    setPositions((old) => ({
-      ...old,
-      [id]: {
-        x: Math.max(0, Math.min(250, old[id].x + dx)),
-        y: Math.max(0, Math.min(190, old[id].y + dy)),
-      },
-    }));
+  function moveWidget(id: string, dx: number, dy: number) {
+    setPositions((old) => {
+      const current = old[id] || { x: 10, y: 10 };
+
+      return {
+        ...old,
+        [id]: {
+          x: Math.max(0, Math.min(250, current.x + dx)),
+          y: Math.max(0, Math.min(190, current.y + dy)),
+        },
+      };
+    });
   }
 
-  function renderSettings(item) {
+  function renderSettings(item: ModuleItem) {
     const values = settings[item.id] || { size: 18, opacity: 100 };
 
     return (
@@ -108,12 +150,12 @@ export default function App() {
         <Text style={styles.settingsTitle}>MODULE SETTINGS</Text>
 
         <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Size: {values.size ?? 18}</Text>
+          <Text style={styles.settingLabel}>Size: {values.size}</Text>
           <View style={styles.controls}>
             <Pressable
               style={styles.smallButton}
               onPress={() =>
-                updateSetting(item.id, "size", Math.max(8, (values.size ?? 18) - 2))
+                updateSetting(item.id, "size", Math.max(8, values.size - 2))
               }
             >
               <Text style={styles.buttonText}>−</Text>
@@ -121,7 +163,7 @@ export default function App() {
             <Pressable
               style={styles.smallButton}
               onPress={() =>
-                updateSetting(item.id, "size", Math.min(150, (values.size ?? 18) + 2))
+                updateSetting(item.id, "size", Math.min(150, values.size + 2))
               }
             >
               <Text style={styles.buttonText}>+</Text>
@@ -130,12 +172,12 @@ export default function App() {
         </View>
 
         <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Opacity: {values.opacity ?? 100}%</Text>
+          <Text style={styles.settingLabel}>Opacity: {values.opacity}%</Text>
           <View style={styles.controls}>
             <Pressable
               style={styles.smallButton}
               onPress={() =>
-                updateSetting(item.id, "opacity", Math.max(0, (values.opacity ?? 100) - 10))
+                updateSetting(item.id, "opacity", Math.max(0, values.opacity - 10))
               }
             >
               <Text style={styles.buttonText}>−</Text>
@@ -143,7 +185,7 @@ export default function App() {
             <Pressable
               style={styles.smallButton}
               onPress={() =>
-                updateSetting(item.id, "opacity", Math.min(100, (values.opacity ?? 100) + 10))
+                updateSetting(item.id, "opacity", Math.min(100, values.opacity + 10))
               }
             >
               <Text style={styles.buttonText}>+</Text>
@@ -333,14 +375,7 @@ export default function App() {
 
             <Pressable
               style={styles.reset}
-              onPress={() =>
-                setPositions({
-                  fps: { x: 10, y: 10 },
-                  coords: { x: 10, y: 60 },
-                  compass: { x: 150, y: 10 },
-                  minimap: { x: 150, y: 60 },
-                })
-              }
+              onPress={() => setPositions(initialPositions)}
             >
               <Text style={styles.navText}>RESET LAYOUT</Text>
             </Pressable>
