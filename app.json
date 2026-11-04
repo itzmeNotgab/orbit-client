@@ -3,6 +3,7 @@
   "expo": {
     "name": "ORBIT CLIENT",
     "slug": "orbit-client",
+    "owner": "jiejiecute",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
