@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "ORBIT CLIENT",
@@ -17,6 +16,9 @@
     },
     "splash": {
       "backgroundColor": "#090713"
-    }
+    },
+    "plugins": [
+      "./plugins/withMinecraftVisibility"
+    ]
   }
 }
