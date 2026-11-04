@@ -24,6 +24,11 @@ jobs:
       - name: Setup Expo
         run: npm install -g eas-cli
 
+      - name: Initialize EAS project
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas init --account jiejiecute --non-interactive
+
       - name: Build APK
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
