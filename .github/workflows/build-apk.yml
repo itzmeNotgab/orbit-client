@@ -29,12 +29,12 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build debug APK
+      - name: Build standalone release APK
         working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleDebug
+        run: chmod +x gradlew && ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: orbit-client-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: orbit-client-release
+          path: android/app/build/outputs/apk/release/*.apk
