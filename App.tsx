@@ -1,394 +1,448 @@
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
+  Animated,
+  Linking,
   SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
   ScrollView,
-  Switch,
   StatusBar,
-  TextInput,
-  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-type ModuleCategory = "HUD" | "Visual" | "Utility" | "Performance" | "Client";
+type Section =
+  | "Home"
+  | "Add-ons"
+  | "Texture Packs"
+  | "Cosmetics"
+  | "Capes"
+  | "Pets"
+  | "World Manager"
+  | "Sign In";
 
-type ModuleItem = {
-  id: string;
-  name: string;
-  category: ModuleCategory;
-  description: string;
-};
-
-type WidgetSettings = {
-  size: number;
-  opacity: number;
-};
-
-type WidgetPosition = {
-  x: number;
-  y: number;
-};
-
-const categories: ModuleCategory[] = [
-  "HUD",
-  "Visual",
-  "Utility",
-  "Performance",
-  "Client",
+const sections: Section[] = [
+  "Home",
+  "Add-ons",
+  "Texture Packs",
+  "Cosmetics",
+  "Capes",
+  "Pets",
+  "World Manager",
+  "Sign In",
 ];
-
-const modules: ModuleItem[] = [
-  { id: "fps", name: "FPS Display", category: "HUD", description: "FPS widget preview." },
-  { id: "coords", name: "Coordinates", category: "HUD", description: "Coordinates widget preview." },
-  { id: "compass", name: "Compass", category: "HUD", description: "Compass widget preview." },
-  { id: "armor", name: "Armor Status", category: "HUD", description: "Equipment status preview." },
-  { id: "keystrokes", name: "Keystrokes", category: "HUD", description: "Input display preview." },
-  { id: "minimap", name: "Minimap", category: "HUD", description: "Map mockup and manual waypoint planning." },
-  { id: "crosshair", name: "Crosshair", category: "Visual", description: "Crosshair style preview." },
-  { id: "particles", name: "Particle Preferences", category: "Visual", description: "Particle settings guide." },
-  { id: "quicknotes", name: "Quick Notes", category: "Utility", description: "Keep notes beside your game." },
-  { id: "waypoints", name: "Waypoints", category: "Utility", description: "Save manual waypoint notes." },
-  { id: "packguide", name: "Pack Guide", category: "Utility", description: "Resource pack tips." },
-  { id: "loweffects", name: "Low Effects Preset", category: "Performance", description: "Lightweight settings checklist." },
-  { id: "battery", name: "Battery Saver Profile", category: "Performance", description: "Companion battery profile." },
-  { id: "notifications", name: "Notifications", category: "Client", description: "Notification preferences." },
-  { id: "compact", name: "Compact Interface", category: "Client", description: "Compact app interface." },
-];
-
-const initialEnabled: Record<string, boolean> = Object.fromEntries(
-  modules.map((item) => [item.id, item.id === "fps"])
-);
-
-const initialPositions: Record<string, WidgetPosition> = {
-  fps: { x: 10, y: 10 },
-  coords: { x: 10, y: 60 },
-  compass: { x: 150, y: 10 },
-  minimap: { x: 150, y: 60 },
-};
-
-const initialSettings: Record<string, WidgetSettings> = {
-  fps: { size: 16, opacity: 100 },
-  coords: { size: 14, opacity: 100 },
-  compass: { size: 18, opacity: 100 },
-  armor: { size: 20, opacity: 100 },
-  keystrokes: { size: 18, opacity: 100 },
-  minimap: { size: 120, opacity: 90 },
-};
 
 export default function App() {
-  const [category, setCategory] = useState<ModuleCategory>("HUD");
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(initialEnabled);
-  const [favorites, setFavorites] = useState<string[]>(["fps"]);
-  const [expanded, setExpanded] = useState<string | null>("fps");
-  const [search, setSearch] = useState("");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [screen, setScreen] = useState<"modules" | "editor">("modules");
+  const [page, setPage] = useState<Section>("Home");
+  const [showIntro, setShowIntro] = useState(true);
+  const [capePhysics, setCapePhysics] = useState(true);
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
 
-  const [settings, setSettings] =
-    useState<Record<string, WidgetSettings>>(initialSettings);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
-  const [positions, setPositions] =
-    useState<Record<string, WidgetPosition>>(initialPositions);
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 35,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, scaleAnim]);
 
-  const [selected, setSelected] = useState<string>("fps");
-
-  const visibleModules = useMemo(() => {
-    return modules.filter((item) => {
-      const matchesCategory = item.category === category;
-      const matchesSearch = (item.name + item.description)
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      const matchesFavorite = !favoritesOnly || favorites.includes(item.id);
-
-      return matchesCategory && matchesSearch && matchesFavorite;
-    });
-  }, [category, search, favoritesOnly, favorites]);
-
-  const activeCount = Object.values(enabled).filter(Boolean).length;
-
-  function updateSetting(
-    id: string,
-    key: keyof WidgetSettings,
-    value: number
-  ) {
-    setSettings((old) => ({
+  const toggleItem = (name: string) => {
+    setEnabled((old) => ({
       ...old,
-      [id]: {
-        ...(old[id] || { size: 18, opacity: 100 }),
-        [key]: value,
-      },
+      [name]: !old[name],
     }));
-  }
+  };
 
-  function toggleFavorite(id: string) {
-    setFavorites((old) =>
-      old.includes(id) ? old.filter((x) => x !== id) : [...old, id]
+  const showComingSoon = (feature: string) => {
+    Alert.alert(
+      "Coming Soon",
+      `${feature} is not implemented yet.`
     );
-  }
+  };
 
-  function moveWidget(id: string, dx: number, dy: number) {
-    setPositions((old) => {
-      const current = old[id] || { x: 10, y: 10 };
+  const launchMinecraft = async () => {
+    try {
+      await Linking.openURL("minecraft://");
+    } catch {
+      Alert.alert(
+        "Minecraft not found",
+        "Please install Minecraft Bedrock first."
+      );
+    }
+  };
 
-      return {
-        ...old,
-        [id]: {
-          x: Math.max(0, Math.min(250, current.x + dx)),
-          y: Math.max(0, Math.min(190, current.y + dy)),
-        },
-      };
-    });
-  }
-
-  function renderSettings(item: ModuleItem) {
-    const values = settings[item.id] || { size: 18, opacity: 100 };
-
-    return (
-      <View style={styles.settings}>
-        <Text style={styles.settingsTitle}>MODULE SETTINGS</Text>
-
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Size: {values.size}</Text>
-          <View style={styles.controls}>
-            <Pressable
-              style={styles.smallButton}
-              onPress={() =>
-                updateSetting(item.id, "size", Math.max(8, values.size - 2))
-              }
-            >
-              <Text style={styles.buttonText}>−</Text>
-            </Pressable>
-            <Pressable
-              style={styles.smallButton}
-              onPress={() =>
-                updateSetting(item.id, "size", Math.min(150, values.size + 2))
-              }
-            >
-              <Text style={styles.buttonText}>+</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>Opacity: {values.opacity}%</Text>
-          <View style={styles.controls}>
-            <Pressable
-              style={styles.smallButton}
-              onPress={() =>
-                updateSetting(item.id, "opacity", Math.max(0, values.opacity - 10))
-              }
-            >
-              <Text style={styles.buttonText}>−</Text>
-            </Pressable>
-            <Pressable
-              style={styles.smallButton}
-              onPress={() =>
-                updateSetting(item.id, "opacity", Math.min(100, values.opacity + 10))
-              }
-            >
-              <Text style={styles.buttonText}>+</Text>
-            </Pressable>
-          </View>
-        </View>
+  const Item = ({
+    name,
+    description,
+  }: {
+    name: string;
+    description: string;
+  }) => (
+    <View style={styles.item}>
+      <View style={styles.itemText}>
+        <Text style={styles.itemTitle}>{name}</Text>
+        <Text style={styles.muted}>{description}</Text>
       </View>
+      <Switch
+        value={!!enabled[name]}
+        onValueChange={() => toggleItem(name)}
+        trackColor={{ false: "#383348", true: "#8055db" }}
+        thumbColor="#ffffff"
+      />
+    </View>
+  );
+
+  const renderHome = () => (
+    <>
+      <View style={styles.hero}>
+        <Text style={styles.logo}>ORBIT</Text>
+        <Text style={styles.tagline}>BEYOND VANILLA.</Text>
+        <Text style={styles.muted}>
+          Your Minecraft Bedrock companion.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.launchButton}
+          onPress={launchMinecraft}
+        >
+          <Text style={styles.launchText}>
+            ▶  LAUNCH MINECRAFT
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>MANAGE YOUR GAME</Text>
+
+      <View style={styles.menuGrid}>
+        {sections.slice(1).map((section) => (
+          <TouchableOpacity
+            key={section}
+            style={styles.menuCard}
+            onPress={() => setPage(section)}
+          >
+            <Text style={styles.menuCardTitle}>{section}</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.notice}>
+        <Text style={styles.noticeTitle}>ORBIT EXCLUSIVE</Text>
+        <Text style={styles.muted}>
+          ORBIT cosmetics, capes, and pets are designed to be
+          visible only to compatible ORBIT users.
+        </Text>
+      </View>
+    </>
+  );
+
+  const renderPage = () => {
+    switch (page) {
+      case "Home":
+        return renderHome();
+
+      case "Add-ons":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>ADD-ON MANAGER</Text>
+            <Text style={styles.muted}>
+              Manage Minecraft add-ons and behavior packs.
+            </Text>
+
+            <Item
+              name="Behavior Packs"
+              description="Manage behavior packs"
+            />
+            <Item
+              name="World Add-ons"
+              description="Add-ons assigned to worlds"
+            />
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => showComingSoon("Add-on importing")}
+            >
+              <Text style={styles.actionText}>+ IMPORT ADD-ON</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.note}>
+              Pack importing and installation are not implemented yet.
+            </Text>
+          </>
+        );
+
+      case "Texture Packs":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>TEXTURE PACKS</Text>
+            <Text style={styles.muted}>
+              Manage your Minecraft resource packs.
+            </Text>
+
+            <Item
+              name="Resource Packs"
+              description="Manage installed resource packs"
+            />
+            <Item
+              name="ORBIT Essentials"
+              description="ORBIT texture pack preview"
+            />
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => showComingSoon("Texture pack importing")}
+            >
+              <Text style={styles.actionText}>
+                + IMPORT TEXTURE PACK
+              </Text>
+            </TouchableOpacity>
+          </>
+        );
+
+      case "Cosmetics":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>COSMETICS</Text>
+            <Text style={styles.muted}>
+              Customize your ORBIT character.
+            </Text>
+
+            <Item name="Halo" description="Floating halo accessory" />
+            <Item name="Headwear" description="Hats and head accessories" />
+            <Item name="Tails" description="Character tail accessories" />
+            <Item name="Wings" description="Decorative character wings" />
+            <Item
+              name="Other Accessories"
+              description="More cosmetic items"
+            />
+
+            <Text style={styles.note}>
+              These are previews. In-game rendering requires
+              compatible Minecraft integration.
+            </Text>
+          </>
+        );
+
+      case "Capes":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>ORBIT CAPES</Text>
+            <Text style={styles.muted}>
+              Capes have their own section, separate from cosmetics.
+            </Text>
+
+            <Item name="ORBIT Cape" description="Classic ORBIT cape" />
+            <Item name="Nebula Cape" description="Nebula-themed cape" />
+
+            <View style={styles.item}>
+              <View style={styles.itemText}>
+                <Text style={styles.itemTitle}>Cape Physics</Text>
+                <Text style={styles.muted}>
+                  Enable cape movement preview
+                </Text>
+              </View>
+              <Switch
+                value={capePhysics}
+                onValueChange={setCapePhysics}
+                trackColor={{ false: "#383348", true: "#8055db" }}
+                thumbColor="#ffffff"
+              />
+            </View>
+
+            <Text style={styles.note}>
+              Cape physics and in-game rendering are not implemented yet.
+            </Text>
+          </>
+        );
+
+      case "Pets":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>ORBIT PETS</Text>
+            <Text style={styles.muted}>
+              Choose a companion to walk beside your character.
+            </Text>
+
+            <Item
+              name="Companion Pet"
+              description="Your personal companion"
+            />
+            <Item
+              name="Cosmic Fox"
+              description="A space-themed fox"
+            />
+            <Item
+              name="Mini Dragon"
+              description="A small dragon companion"
+            />
+
+            <Text style={styles.note}>
+              Pets are designed to walk beside the player,
+              not sit on their shoulder. In-game behavior
+              is not implemented yet.
+            </Text>
+          </>
+        );
+
+      case "World Manager":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>WORLD MANAGER</Text>
+            <Text style={styles.muted}>
+              Organize and manage your Minecraft worlds.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => showComingSoon("World list")}
+            >
+              <Text style={styles.actionText}>VIEW WORLDS</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => showComingSoon("World backup")}
+            >
+              <Text style={styles.actionText}>BACK UP WORLDS</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => showComingSoon("World import")}
+            >
+              <Text style={styles.actionText}>IMPORT WORLD</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.note}>
+              World access depends on Android storage permissions.
+            </Text>
+          </>
+        );
+
+      case "Sign In":
+        return (
+          <>
+            <Text style={styles.sectionTitle}>ORBIT ACCOUNT</Text>
+            <Text style={styles.muted}>
+              Sign in to access ORBIT-exclusive features.
+            </Text>
+
+            <View style={styles.notice}>
+              <Text style={styles.noticeTitle}>ACCOUNT SYSTEM</Text>
+              <Text style={styles.muted}>
+                ORBIT account sign-in is not available yet.
+                Microsoft authentication has not been implemented.
+              </Text>
+            </View>
+
+            <Text style={styles.note}>
+              Never enter your Microsoft password into an unofficial form.
+            </Text>
+          </>
+        );
+    }
+  };
+
+  if (showIntro) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#090713"
+        />
+
+        <View style={styles.introBackground}>
+          <Animated.View
+            style={[
+              styles.introContent,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}
+          >
+            <View style={styles.orbitSymbol}>
+              <Text style={styles.orbitIcon}>◎</Text>
+            </View>
+
+            <Text style={styles.introLogo}>ORBIT</Text>
+            <Text style={styles.tagline}>BEYOND VANILLA.</Text>
+
+            <Text style={styles.introDescription}>
+              YOUR WORLD. YOUR EXPERIENCE.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.launchButton}
+              onPress={() => setShowIntro(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.launchText}>
+                ENTER ORBIT  →
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.introFooter}>
+              ORBIT CLIENT • BEDROCK EDITION
+            </Text>
+          </Animated.View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#090713" />
+    <SafeAreaView style={styles.safe}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#090713"
+      />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.logo}>◉ ORBIT</Text>
-            <Text style={styles.tagline}>BEYOND VANILLA.</Text>
-          </View>
-          <Text style={styles.ready}>● READY</Text>
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => setPage("Home")}>
+          <Text style={styles.headerLogo}>ORBIT</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerLabel}>BEYOND VANILLA</Text>
+      </View>
 
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>ORBIT CLIENT • V1.2</Text>
-          <Text style={styles.heading}>Your game.</Text>
-          <Text style={styles.heading}>
-            Your <Text style={styles.purple}>control.</Text>
-          </Text>
-          <Text style={styles.description}>
-            A customizable Minecraft Bedrock companion.
-          </Text>
-
-          <View style={styles.stats}>
-            <Text style={styles.stat}>{activeCount} ENABLED</Text>
-            <Text style={styles.stat}>{modules.length} MODULES</Text>
-          </View>
-        </View>
-
-        <View style={styles.navigation}>
-          <Pressable
-            style={[styles.navButton, screen === "modules" && styles.selectedNav]}
-            onPress={() => setScreen("modules")}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        {page !== "Home" && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setPage("Home")}
           >
-            <Text style={styles.navText}>CLICKGUI</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.navButton, screen === "editor" && styles.selectedNav]}
-            onPress={() => setScreen("editor")}
-          >
-            <Text style={styles.navText}>HUD EDITOR</Text>
-          </Pressable>
-        </View>
-
-        {screen === "modules" ? (
-          <>
-            <Text style={styles.sectionTitle}>MODULES</Text>
-            <TextInput
-              style={styles.search}
-              placeholder="Search modules..."
-              placeholderTextColor="#81778F"
-              value={search}
-              onChangeText={setSearch}
-            />
-
-            <Pressable
-              style={styles.favoriteFilter}
-              onPress={() => setFavoritesOnly(!favoritesOnly)}
-            >
-              <Text style={styles.categoryText}>
-                {favoritesOnly ? "★ SHOWING FAVORITES" : "☆ SHOW FAVORITES"}
-              </Text>
-            </Pressable>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {categories.map((item) => (
-                <Pressable
-                  key={item}
-                  style={[
-                    styles.category,
-                    category === item && styles.selectedCategory,
-                  ]}
-                  onPress={() => {
-                    setCategory(item);
-                    setFavoritesOnly(false);
-                  }}
-                >
-                  <Text style={styles.categoryText}>{item}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {visibleModules.map((item) => (
-              <View key={item.id} style={styles.card}>
-                <View style={styles.moduleHeader}>
-                  <Pressable
-                    style={styles.moduleInfo}
-                    onPress={() =>
-                      setExpanded(expanded === item.id ? null : item.id)
-                    }
-                  >
-                    <Text style={styles.moduleName}>{item.name}</Text>
-                    <Text style={styles.moduleDescription}>
-                      {item.description}
-                    </Text>
-                  </Pressable>
-
-                  <Pressable onPress={() => toggleFavorite(item.id)}>
-                    <Text style={styles.star}>
-                      {favorites.includes(item.id) ? "★" : "☆"}
-                    </Text>
-                  </Pressable>
-
-                  <Switch
-                    value={Boolean(enabled[item.id])}
-                    onValueChange={(value) =>
-                      setEnabled((old) => ({ ...old, [item.id]: value }))
-                    }
-                    trackColor={{ false: "#393244", true: "#8B50E8" }}
-                  />
-                </View>
-
-                <Text style={styles.status}>
-                  {enabled[item.id] ? "● ENABLED" : "○ DISABLED"}
-                </Text>
-
-                {expanded === item.id && renderSettings(item)}
-              </View>
-            ))}
-          </>
-        ) : (
-          <>
-            <Text style={styles.sectionTitle}>HUD EDITOR</Text>
-            <Text style={styles.description}>
-              Select a widget, then use the arrows to move it around.
+            <Text style={styles.backText}>
+              ‹  BACK TO HOME
             </Text>
-
-            <View style={styles.canvas}>
-              {["fps", "coords", "compass", "minimap"].map((id) => (
-                <Pressable
-                  key={id}
-                  onPress={() => setSelected(id)}
-                  style={[
-                    styles.widget,
-                    {
-                      left: positions[id].x,
-                      top: positions[id].y,
-                      borderColor: selected === id ? "#D2AFFF" : "#71539A",
-                    },
-                  ]}
-                >
-                  <Text style={styles.widgetText}>{id.toUpperCase()}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.settingLabel}>
-              SELECTED: {selected.toUpperCase()}
-            </Text>
-
-            <View style={styles.moveControls}>
-              <Pressable
-                style={styles.moveButton}
-                onPress={() => moveWidget(selected, 0, -10)}
-              >
-                <Text style={styles.buttonText}>↑</Text>
-              </Pressable>
-              <Pressable
-                style={styles.moveButton}
-                onPress={() => moveWidget(selected, -10, 0)}
-              >
-                <Text style={styles.buttonText}>←</Text>
-              </Pressable>
-              <Pressable
-                style={styles.moveButton}
-                onPress={() => moveWidget(selected, 0, 10)}
-              >
-                <Text style={styles.buttonText}>↓</Text>
-              </Pressable>
-              <Pressable
-                style={styles.moveButton}
-                onPress={() => moveWidget(selected, 10, 0)}
-              >
-                <Text style={styles.buttonText}>→</Text>
-              </Pressable>
-            </View>
-
-            <Pressable
-              style={styles.reset}
-              onPress={() => setPositions(initialPositions)}
-            >
-              <Text style={styles.navText}>RESET LAYOUT</Text>
-            </Pressable>
-          </>
+          </TouchableOpacity>
         )}
 
+        {renderPage()}
+
         <View style={styles.footer}>
-          <Text style={styles.footerTitle}>ORBIT CLIENT</Text>
-          <Text style={styles.footerText}>BEYOND VANILLA.</Text>
-          <Text style={styles.disclaimer}>
-            Companion app preview only. These controls do not modify Minecraft,
-            inject code or bypass protections. Live game data requires supported
-            Bedrock integration.
+          <Text style={styles.footerLogo}>ORBIT CLIENT</Text>
+          <Text style={styles.muted}>BEYOND VANILLA.</Text>
+          <Text style={styles.note}>
+            Launcher preview. In-game features require compatible
+            Minecraft integration. Gameplay modules belong inside
+            Minecraft, not in this launcher.
           </Text>
         </View>
       </ScrollView>
@@ -397,51 +451,226 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#090713" },
-  content: { padding: 18, paddingBottom: 40 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 22 },
-  logo: { color: "#FFF", fontSize: 27, fontWeight: "900", letterSpacing: 3 },
-  tagline: { color: "#A56BFF", fontSize: 9, fontWeight: "900", letterSpacing: 3 },
-  ready: { color: "#8CE8B7", fontSize: 10, fontWeight: "900" },
-  hero: { backgroundColor: "#151122", borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "#302443", marginBottom: 20 },
-  eyebrow: { color: "#A56BFF", fontSize: 9, fontWeight: "900", marginBottom: 12 },
-  heading: { color: "#FFF", fontSize: 34, fontWeight: "900" },
-  purple: { color: "#B889FF" },
-  description: { color: "#A69DB6", fontSize: 12, lineHeight: 19, marginTop: 10 },
-  stats: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, borderTopWidth: 1, borderTopColor: "#302443", paddingTop: 15 },
-  stat: { color: "#C69BFF", fontSize: 10, fontWeight: "900" },
-  navigation: { flexDirection: "row", backgroundColor: "#151122", borderRadius: 12, padding: 4, marginBottom: 22 },
-  navButton: { flex: 1, padding: 12, alignItems: "center", borderRadius: 9 },
-  selectedNav: { backgroundColor: "#382253" },
-  navText: { color: "#E2CEFF", fontSize: 10, fontWeight: "900" },
-  sectionTitle: { color: "#FFF", fontSize: 18, fontWeight: "900", marginBottom: 12 },
-  search: { backgroundColor: "#151122", borderWidth: 1, borderColor: "#302443", borderRadius: 12, color: "#FFF", padding: 13, marginBottom: 12 },
-  favoriteFilter: { alignSelf: "flex-start", borderWidth: 1, borderColor: "#74529A", borderRadius: 20, padding: 9, marginBottom: 12 },
-  category: { backgroundColor: "#151122", borderWidth: 1, borderColor: "#342A43", borderRadius: 10, padding: 11, marginRight: 7, marginBottom: 15 },
-  selectedCategory: { backgroundColor: "#382253", borderColor: "#A56BFF" },
-  categoryText: { color: "#DCCBEE", fontSize: 10, fontWeight: "800" },
-  card: { backgroundColor: "#151122", borderRadius: 14, borderWidth: 1, borderColor: "#302443", padding: 14, marginBottom: 10 },
-  moduleHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  moduleInfo: { flex: 1 },
-  moduleName: { color: "#FFF", fontSize: 13, fontWeight: "800" },
-  moduleDescription: { color: "#91889F", fontSize: 10, marginTop: 4 },
-  star: { color: "#C69BFF", fontSize: 21 },
-  status: { color: "#C69BFF", fontSize: 8, fontWeight: "900", marginTop: 8 },
-  settings: { borderTopWidth: 1, borderTopColor: "#352844", marginTop: 12, paddingTop: 12 },
-  settingsTitle: { color: "#B889FF", fontSize: 9, fontWeight: "900", marginBottom: 12 },
-  settingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  settingLabel: { color: "#D7CDE5", fontSize: 10, fontWeight: "700" },
-  controls: { flexDirection: "row", gap: 8 },
-  smallButton: { backgroundColor: "#493064", borderRadius: 7, paddingHorizontal: 13, paddingVertical: 5 },
-  buttonText: { color: "#FFF", fontSize: 16, fontWeight: "900" },
-  canvas: { height: 250, backgroundColor: "#100D19", borderWidth: 1, borderColor: "#49365E", borderRadius: 13, marginVertical: 15, position: "relative", overflow: "hidden" },
-  widget: { position: "absolute", backgroundColor: "#261B36", borderWidth: 1, borderRadius: 7, padding: 9 },
-  widgetText: { color: "#F1E8FF", fontSize: 10, fontWeight: "900" },
-  moveControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginVertical: 15 },
-  moveButton: { backgroundColor: "#493064", borderRadius: 9, padding: 13, minWidth: 45, alignItems: "center" },
-  reset: { backgroundColor: "#382253", borderRadius: 9, padding: 13, alignItems: "center" },
-  footer: { alignItems: "center", marginTop: 30 },
-  footerTitle: { color: "#B889FF", fontSize: 13, fontWeight: "900", letterSpacing: 3 },
-  footerText: { color: "#82798F", fontSize: 9, marginTop: 5 },
-  disclaimer: { color: "#716A7D", fontSize: 8, lineHeight: 14, textAlign: "center", marginTop: 10 },
+  safe: {
+    flex: 1,
+    backgroundColor: "#090713",
+  },
+  introBackground: {
+    flex: 1,
+    backgroundColor: "#090713",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 25,
+  },
+  introContent: {
+    width: "100%",
+    alignItems: "center",
+  },
+  orbitSymbol: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 2,
+    borderColor: "#8055db",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 25,
+    backgroundColor: "#171027",
+  },
+  orbitIcon: {
+    color: "#c5a8ff",
+    fontSize: 75,
+    fontWeight: "300",
+  },
+  introLogo: {
+    color: "#ffffff",
+    fontSize: 52,
+    fontWeight: "900",
+    letterSpacing: 10,
+  },
+  introDescription: {
+    color: "#aaa4b9",
+    fontSize: 11,
+    letterSpacing: 3,
+    marginTop: 30,
+  },
+  introFooter: {
+    color: "#706981",
+    fontSize: 10,
+    letterSpacing: 2,
+    marginTop: 65,
+  },
+  header: {
+    height: 60,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#292238",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerLogo: {
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 3,
+  },
+  headerLabel: {
+    color: "#9874dc",
+    fontSize: 10,
+    letterSpacing: 2,
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  hero: {
+    alignItems: "center",
+    paddingVertical: 42,
+  },
+  logo: {
+    color: "#ffffff",
+    fontSize: 48,
+    fontWeight: "900",
+    letterSpacing: 8,
+  },
+  tagline: {
+    color: "#a982f5",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 5,
+    marginTop: 5,
+    marginBottom: 12,
+  },
+  muted: {
+    color: "#aaa4b9",
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  launchButton: {
+    backgroundColor: "#8055db",
+    paddingVertical: 17,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    marginTop: 30,
+    width: "100%",
+    alignItems: "center",
+  },
+  launchText: {
+    color: "#ffffff",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  sectionTitle: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 2,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  menuGrid: {
+    gap: 10,
+    marginTop: 12,
+  },
+  menuCard: {
+    backgroundColor: "#171323",
+    borderWidth: 1,
+    borderColor: "#302641",
+    borderRadius: 12,
+    padding: 18,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  menuCardTitle: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  menuArrow: {
+    color: "#a982f5",
+    fontSize: 25,
+  },
+  notice: {
+    backgroundColor: "#1b1530",
+    borderWidth: 1,
+    borderColor: "#59417f",
+    padding: 17,
+    borderRadius: 12,
+    marginTop: 25,
+    gap: 8,
+  },
+  noticeTitle: {
+    color: "#b997ff",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+  item: {
+    backgroundColor: "#171323",
+    borderWidth: 1,
+    borderColor: "#302641",
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  itemText: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  itemTitle: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  actionButton: {
+    backgroundColor: "#241b36",
+    borderWidth: 1,
+    borderColor: "#8055db",
+    borderRadius: 10,
+    padding: 16,
+    marginTop: 12,
+    alignItems: "center",
+  },
+  actionText: {
+    color: "#c5a8ff",
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  note: {
+    color: "#817a91",
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 15,
+  },
+  backButton: {
+    marginBottom: 10,
+    paddingVertical: 10,
+  },
+  backText: {
+    color: "#b997ff",
+    fontWeight: "800",
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: "#292238",
+    marginTop: 40,
+    paddingTop: 20,
+    alignItems: "center",
+  },
+  footerLogo: {
+    color: "#ffffff",
+    fontWeight: "900",
+    letterSpacing: 3,
+  },
 });
