@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build ORBIT APK
     runs-on: ubuntu-latest
 
     steps:
@@ -17,18 +17,24 @@ jobs:
         with:
           node-version: 20
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Expo
-        run: npm install -g eas-cli
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
 
-      - name: Initialize EAS project
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas init --account jiejiecute --non-interactive
+      - name: Build debug APK
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug
 
-      - name: Build APK
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile preview --non-interactive --wait
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-client-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
