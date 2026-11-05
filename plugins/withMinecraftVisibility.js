@@ -5,22 +5,26 @@ function withMinecraftVisibility(config) {
     const manifest = config.modResults.manifest;
 
     if (!manifest.queries) {
-      manifest.queries = {};
+      manifest.queries = [];
     }
 
-    if (!manifest.queries.package) {
-      manifest.queries.package = [];
+    if (!manifest.queries[0]) {
+      manifest.queries.push({});
     }
 
-    const packages = manifest.queries.package;
+    const queries = manifest.queries[0];
 
-    const alreadyAdded = packages.some(
+    if (!queries.package) {
+      queries.package = [];
+    }
+
+    const alreadyAdded = queries.package.some(
       (item) =>
         item.$?.["android:name"] === "com.mojang.minecraftpe"
     );
 
     if (!alreadyAdded) {
-      packages.push({
+      queries.package.push({
         $: {
           "android:name": "com.mojang.minecraftpe",
         },
