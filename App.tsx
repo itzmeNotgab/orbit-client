@@ -25,7 +25,6 @@ type Section =
   | "Sign In";
 
 const sections: Section[] = [
-  "Home",
   "Add-ons",
   "Texture Packs",
   "Cosmetics",
@@ -41,24 +40,29 @@ export default function App() {
   const [capePhysics, setCapePhysics] = useState(true);
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.92)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 6,
-        tension: 35,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, scaleAnim]);
+    if (showIntro) {
+      fade.setValue(0);
+      scale.setValue(0.92);
+
+      Animated.parallel([
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 1100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 7,
+          tension: 35,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showIntro, fade, scale]);
 
   const toggleItem = (name: string) => {
     setEnabled((old) => ({
@@ -67,11 +71,8 @@ export default function App() {
     }));
   };
 
-  const showComingSoon = (feature: string) => {
-    Alert.alert(
-      "Coming Soon",
-      `${feature} is not implemented yet.`
-    );
+  const comingSoon = (name: string) => {
+    Alert.alert("Coming Soon", `${name} is not implemented yet.`);
   };
 
   const launchMinecraft = async () => {
@@ -109,18 +110,18 @@ export default function App() {
   const renderHome = () => (
     <>
       <View style={styles.hero}>
-        <Text style={styles.logo}>ORBIT</Text>
+        <Text style={styles.homeLogo}>ORBIT</Text>
         <Text style={styles.tagline}>BEYOND VANILLA.</Text>
         <Text style={styles.muted}>
           Your Minecraft Bedrock companion.
         </Text>
 
         <TouchableOpacity
-          style={styles.launchButton}
+          style={styles.primaryButton}
           onPress={launchMinecraft}
         >
-          <Text style={styles.launchText}>
-            ▶  LAUNCH MINECRAFT
+          <Text style={styles.primaryButtonText}>
+            LAUNCH MINECRAFT
           </Text>
         </TouchableOpacity>
       </View>
@@ -128,7 +129,7 @@ export default function App() {
       <Text style={styles.sectionTitle}>MANAGE YOUR GAME</Text>
 
       <View style={styles.menuGrid}>
-        {sections.slice(1).map((section) => (
+        {sections.map((section) => (
           <TouchableOpacity
             key={section}
             style={styles.menuCard}
@@ -143,8 +144,8 @@ export default function App() {
       <View style={styles.notice}>
         <Text style={styles.noticeTitle}>ORBIT EXCLUSIVE</Text>
         <Text style={styles.muted}>
-          ORBIT cosmetics, capes, and pets are designed to be
-          visible only to compatible ORBIT users.
+          Cosmetics, capes, and pets are intended for compatible
+          ORBIT users.
         </Text>
       </View>
     </>
@@ -160,28 +161,12 @@ export default function App() {
           <>
             <Text style={styles.sectionTitle}>ADD-ON MANAGER</Text>
             <Text style={styles.muted}>
-              Manage Minecraft add-ons and behavior packs.
+              Manage your Minecraft add-ons and behavior packs.
             </Text>
-
-            <Item
-              name="Behavior Packs"
-              description="Manage behavior packs"
-            />
-            <Item
-              name="World Add-ons"
-              description="Add-ons assigned to worlds"
-            />
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => showComingSoon("Add-on importing")}
-            >
-              <Text style={styles.actionText}>+ IMPORT ADD-ON</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.note}>
-              Pack importing and installation are not implemented yet.
-            </Text>
+            <Item name="Behavior Packs" description="Manage behavior packs" />
+            <Item name="World Add-ons" description="Add-ons assigned to worlds" />
+            <Action label="+ IMPORT ADD-ON" onPress={() => comingSoon("Add-on importing")} />
+            <Text style={styles.note}>Pack importing is not implemented yet.</Text>
           </>
         );
 
@@ -189,27 +174,10 @@ export default function App() {
         return (
           <>
             <Text style={styles.sectionTitle}>TEXTURE PACKS</Text>
-            <Text style={styles.muted}>
-              Manage your Minecraft resource packs.
-            </Text>
-
-            <Item
-              name="Resource Packs"
-              description="Manage installed resource packs"
-            />
-            <Item
-              name="ORBIT Essentials"
-              description="ORBIT texture pack preview"
-            />
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => showComingSoon("Texture pack importing")}
-            >
-              <Text style={styles.actionText}>
-                + IMPORT TEXTURE PACK
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.muted}>Manage your resource packs.</Text>
+            <Item name="Resource Packs" description="Manage installed resource packs" />
+            <Item name="ORBIT Essentials" description="ORBIT texture pack preview" />
+            <Action label="+ IMPORT TEXTURE PACK" onPress={() => comingSoon("Texture pack importing")} />
           </>
         );
 
@@ -217,22 +185,16 @@ export default function App() {
         return (
           <>
             <Text style={styles.sectionTitle}>COSMETICS</Text>
-            <Text style={styles.muted}>
-              Customize your ORBIT character.
-            </Text>
-
+            <Text style={styles.muted}>Customize your ORBIT character.</Text>
             <Item name="Halo" description="Floating halo accessory" />
             <Item name="Headwear" description="Hats and head accessories" />
+            <Item name="Bandanas" description="Wearable bandanas" />
             <Item name="Tails" description="Character tail accessories" />
-            <Item name="Wings" description="Decorative character wings" />
-            <Item
-              name="Other Accessories"
-              description="More cosmetic items"
-            />
-
+            <Item name="Wings" description="Decorative wings" />
+            <Item name="Other Accessories" description="More cosmetic items" />
             <Text style={styles.note}>
-              These are previews. In-game rendering requires
-              compatible Minecraft integration.
+              These are previews. In-game rendering requires compatible
+              Minecraft integration.
             </Text>
           </>
         );
@@ -241,19 +203,13 @@ export default function App() {
         return (
           <>
             <Text style={styles.sectionTitle}>ORBIT CAPES</Text>
-            <Text style={styles.muted}>
-              Capes have their own section, separate from cosmetics.
-            </Text>
-
+            <Text style={styles.muted}>Capes are separate from cosmetics.</Text>
             <Item name="ORBIT Cape" description="Classic ORBIT cape" />
             <Item name="Nebula Cape" description="Nebula-themed cape" />
-
             <View style={styles.item}>
               <View style={styles.itemText}>
                 <Text style={styles.itemTitle}>Cape Physics</Text>
-                <Text style={styles.muted}>
-                  Enable cape movement preview
-                </Text>
+                <Text style={styles.muted}>Enable cape movement preview</Text>
               </View>
               <Switch
                 value={capePhysics}
@@ -262,7 +218,6 @@ export default function App() {
                 thumbColor="#ffffff"
               />
             </View>
-
             <Text style={styles.note}>
               Cape physics and in-game rendering are not implemented yet.
             </Text>
@@ -276,24 +231,12 @@ export default function App() {
             <Text style={styles.muted}>
               Choose a companion to walk beside your character.
             </Text>
-
-            <Item
-              name="Companion Pet"
-              description="Your personal companion"
-            />
-            <Item
-              name="Cosmic Fox"
-              description="A space-themed fox"
-            />
-            <Item
-              name="Mini Dragon"
-              description="A small dragon companion"
-            />
-
+            <Item name="Companion Pet" description="Your personal companion" />
+            <Item name="Cosmic Fox" description="A space-themed fox" />
+            <Item name="Mini Dragon" description="A small dragon companion" />
             <Text style={styles.note}>
-              Pets are designed to walk beside the player,
-              not sit on their shoulder. In-game behavior
-              is not implemented yet.
+              Pets are designed to walk beside the player, not sit on
+              their shoulder. In-game behavior is not implemented yet.
             </Text>
           </>
         );
@@ -302,31 +245,10 @@ export default function App() {
         return (
           <>
             <Text style={styles.sectionTitle}>WORLD MANAGER</Text>
-            <Text style={styles.muted}>
-              Organize and manage your Minecraft worlds.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => showComingSoon("World list")}
-            >
-              <Text style={styles.actionText}>VIEW WORLDS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => showComingSoon("World backup")}
-            >
-              <Text style={styles.actionText}>BACK UP WORLDS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => showComingSoon("World import")}
-            >
-              <Text style={styles.actionText}>IMPORT WORLD</Text>
-            </TouchableOpacity>
-
+            <Text style={styles.muted}>Organize your Minecraft worlds.</Text>
+            <Action label="VIEW WORLDS" onPress={() => comingSoon("World list")} />
+            <Action label="BACK UP WORLDS" onPress={() => comingSoon("World backup")} />
+            <Action label="IMPORT WORLD" onPress={() => comingSoon("World import")} />
             <Text style={styles.note}>
               World access depends on Android storage permissions.
             </Text>
@@ -340,15 +262,13 @@ export default function App() {
             <Text style={styles.muted}>
               Sign in to access ORBIT-exclusive features.
             </Text>
-
             <View style={styles.notice}>
               <Text style={styles.noticeTitle}>ACCOUNT SYSTEM</Text>
               <Text style={styles.muted}>
-                ORBIT account sign-in is not available yet.
-                Microsoft authentication has not been implemented.
+                ORBIT sign-in is not available yet. Microsoft
+                authentication has not been implemented.
               </Text>
             </View>
-
             <Text style={styles.note}>
               Never enter your Microsoft password into an unofficial form.
             </Text>
@@ -360,44 +280,45 @@ export default function App() {
   if (showIntro) {
     return (
       <SafeAreaView style={styles.safe}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="#090713"
-        />
+        <StatusBar barStyle="light-content" backgroundColor="#080611" />
 
-        <View style={styles.introBackground}>
+        <View style={styles.intro}>
           <Animated.View
             style={[
               styles.introContent,
               {
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }],
+                opacity: fade,
+                transform: [{ scale }],
               },
             ]}
           >
-            <View style={styles.orbitSymbol}>
-              <Text style={styles.orbitIcon}>◎</Text>
+            <View style={styles.emblem}>
+              <View style={styles.emblemCore} />
+              <View style={styles.orbitRingOne} />
+              <View style={styles.orbitRingTwo} />
+              <View style={styles.orbitDot} />
             </View>
 
             <Text style={styles.introLogo}>ORBIT</Text>
-            <Text style={styles.tagline}>BEYOND VANILLA.</Text>
+            <Text style={styles.introTagline}>BEYOND VANILLA.</Text>
 
-            <Text style={styles.introDescription}>
-              YOUR WORLD. YOUR EXPERIENCE.
+            <View style={styles.introDivider} />
+
+            <Text style={styles.introSubtitle}>
+              A NEW WAY TO PLAY.
             </Text>
 
             <TouchableOpacity
-              style={styles.launchButton}
+              style={styles.getStarted}
               onPress={() => setShowIntro(false)}
               activeOpacity={0.8}
             >
-              <Text style={styles.launchText}>
-                ENTER ORBIT  →
-              </Text>
+              <Text style={styles.getStartedText}>GET STARTED</Text>
+              <Text style={styles.getStartedArrow}>→</Text>
             </TouchableOpacity>
 
             <Text style={styles.introFooter}>
-              ORBIT CLIENT • BEDROCK EDITION
+              ORBIT CLIENT  /  BEDROCK EDITION
             </Text>
           </Animated.View>
         </View>
@@ -407,10 +328,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#090713"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#080611" />
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setPage("Home")}>
@@ -428,9 +346,7 @@ export default function App() {
             style={styles.backButton}
             onPress={() => setPage("Home")}
           >
-            <Text style={styles.backText}>
-              ‹  BACK TO HOME
-            </Text>
+            <Text style={styles.backText}>‹  BACK TO HOME</Text>
           </TouchableOpacity>
         )}
 
@@ -450,53 +366,129 @@ export default function App() {
   );
 }
 
+function Action({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+      <Text style={styles.actionText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#090713",
+    backgroundColor: "#080611",
   },
-  introBackground: {
+  intro: {
     flex: 1,
-    backgroundColor: "#090713",
+    backgroundColor: "#080611",
     alignItems: "center",
     justifyContent: "center",
-    padding: 25,
+    padding: 28,
   },
   introContent: {
     width: "100%",
     alignItems: "center",
   },
-  orbitSymbol: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 2,
-    borderColor: "#8055db",
+  emblem: {
+    width: 150,
+    height: 150,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 25,
-    backgroundColor: "#171027",
+    marginBottom: 32,
   },
-  orbitIcon: {
-    color: "#c5a8ff",
-    fontSize: 75,
-    fontWeight: "300",
+  emblemCore: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#a77aff",
+    borderWidth: 8,
+    borderColor: "#39245e",
+  },
+  orbitRingOne: {
+    position: "absolute",
+    width: 135,
+    height: 55,
+    borderRadius: 70,
+    borderWidth: 2,
+    borderColor: "#a77aff",
+    transform: [{ rotate: "-35deg" }],
+  },
+  orbitRingTwo: {
+    position: "absolute",
+    width: 135,
+    height: 55,
+    borderRadius: 70,
+    borderWidth: 1,
+    borderColor: "#6843a3",
+    transform: [{ rotate: "35deg" }],
+  },
+  orbitDot: {
+    position: "absolute",
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    backgroundColor: "#ffffff",
+    top: 20,
+    right: 25,
   },
   introLogo: {
     color: "#ffffff",
-    fontSize: 52,
+    fontSize: 53,
     fontWeight: "900",
-    letterSpacing: 10,
+    letterSpacing: 12,
+    marginLeft: 12,
   },
-  introDescription: {
-    color: "#aaa4b9",
-    fontSize: 11,
-    letterSpacing: 3,
+  introTagline: {
+    color: "#b58aff",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 5,
+    marginTop: 9,
+  },
+  introDivider: {
+    width: 42,
+    height: 2,
+    backgroundColor: "#8055db",
     marginTop: 30,
+    marginBottom: 22,
+  },
+  introSubtitle: {
+    color: "#d0cadc",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 3,
+  },
+  getStarted: {
+    width: "100%",
+    height: 58,
+    backgroundColor: "#8055db",
+    borderRadius: 12,
+    marginTop: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 15,
+  },
+  getStartedText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 3,
+  },
+  getStartedArrow: {
+    color: "#ffffff",
+    fontSize: 20,
   },
   introFooter: {
     color: "#706981",
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 2,
     marginTop: 65,
   },
@@ -531,7 +523,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 42,
   },
-  logo: {
+  homeLogo: {
     color: "#ffffff",
     fontSize: 48,
     fontWeight: "900",
@@ -550,7 +542,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  launchButton: {
+  primaryButton: {
     backgroundColor: "#8055db",
     paddingVertical: 17,
     paddingHorizontal: 30,
@@ -559,10 +551,10 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  launchText: {
+  primaryButtonText: {
     color: "#ffffff",
     fontWeight: "900",
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   sectionTitle: {
     color: "#ffffff",
