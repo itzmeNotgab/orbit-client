@@ -1,4 +1,3 @@
-
 const { withAndroidManifest } = require("expo/config-plugins");
 
 function withMinecraftVisibility(config) {
@@ -6,28 +5,25 @@ function withMinecraftVisibility(config) {
     const manifest = config.modResults.manifest;
 
     if (!manifest.queries) {
-      manifest.queries = [];
+      manifest.queries = {};
     }
 
-    const queries = manifest.queries;
+    if (!manifest.queries.package) {
+      manifest.queries.package = [];
+    }
 
-    const alreadyAdded = queries.some((query) =>
-      query.package?.some(
-        (item) =>
-          item.$?.["android:name"] ===
-          "com.mojang.minecraftpe"
-      )
+    const packages = manifest.queries.package;
+
+    const alreadyAdded = packages.some(
+      (item) =>
+        item.$?.["android:name"] === "com.mojang.minecraftpe"
     );
 
     if (!alreadyAdded) {
-      queries.push({
-        package: [
-          {
-            $: {
-              "android:name": "com.mojang.minecraftpe",
-            },
-          },
-        ],
+      packages.push({
+        $: {
+          "android:name": "com.mojang.minecraftpe",
+        },
       });
     }
 
